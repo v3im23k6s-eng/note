@@ -30,7 +30,7 @@
 | システム思考 | 未着手 | |
 | ゼロベース思考 | 未着手 | |
 | MECE | 初稿済み | articles/thinking-frameworks/mece.md（note投稿はまだ） |
-| ロジックツリー | 未着手 | |
+| ロジックツリー | 初稿済み | articles/thinking-frameworks/logic-tree.md（note投稿はまだ） |
 | 意思決定ツリー | 未着手 | |
 | PREP法 | 未着手 | |
 | PDCAサイクル | 未着手 | |
@@ -52,7 +52,7 @@
 | テーマ | ステータス | 備考 |
 |--------|-----------|------|
 | ケース面接 | 未着手 | フェルミ推定・売上向上と接続 |
-| STAR面接法 | 未着手 | |
+| STAR面接法 | 初稿済み | articles/interviews/star-method.md（note投稿はまだ） |
 | コンピテンシー面接 | 未着手 | |
 | 構造化面接 | 未着手 | |
 
@@ -62,7 +62,7 @@
 |--------|-----------|------|
 | 自己分析の進め方 | 未着手 | |
 | ガクチカ（学生時代に力を入れたこと）の作り方 | 初稿済み | articles/self-analysis/gakuchika.md（note投稿はまだ） |
-| Will-Can-Mustの整理 | 未着手 | |
+| Will-Can-Mustの整理 | 初稿済み | articles/self-analysis/will-can-must.md（note投稿はまだ） |
 | キャリアアンカー | 未着手 | |
 
 ## articles/business-skills（社会人基礎力・ビジネススキル）
@@ -70,7 +70,7 @@
 | テーマ | ステータス | 備考 |
 |--------|-----------|------|
 | ポータブルスキル | 未着手 | |
-| 社会人基礎力 | 未着手 | |
+| 社会人基礎力 | 初稿済み | articles/business-skills/shakaijin-kiso-ryoku.md（note投稿はまだ） |
 | ファシリテーション | 未着手 | |
 | アサーティブコミュニケーション | 未着手 | |
 | ネゴシエーション | 未着手 | |
@@ -81,5 +81,5 @@
 
 | テーマ | ステータス | 備考 |
 |--------|-----------|------|
-| ジョブ型雇用 | 未着手 | |
-| メンバーシップ型雇用 | 未着手 | ジョブ型と対比で1本にまとめても可 |
+| ジョブ型雇用 | 初稿済み | articles/employment-systems/job-vs-membership.md（メンバーシップ型と1本にまとめて執筆、note投稿はまだ） |
+| メンバーシップ型雇用 | 初稿済み | articles/employment-systems/job-vs-membership.md（ジョブ型と1本にまとめて執筆、note投稿はまだ） |
