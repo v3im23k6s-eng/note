@@ -691,7 +691,6 @@
 
     $("#saveBtn").addEventListener("click", function () {
       readSettingsForm();
-      var ok = saveSettings.call(null) !== false;
       saveSettings();
       renderQtQuickLinks();
       var note = $("#saveNote");
