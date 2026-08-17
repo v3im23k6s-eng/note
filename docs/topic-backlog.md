@@ -32,7 +32,7 @@
 | MECE | 初稿済み | articles/thinking-frameworks/mece.md（note投稿はまだ） |
 | ロジックツリー | 初稿済み | articles/thinking-frameworks/logic-tree.md（note投稿はまだ） |
 | 意思決定ツリー | 未着手 | |
-| PREP法 | 未着手 | |
+| PREP法 | 初稿済み | articles/thinking-frameworks/prep-method.md（note投稿はまだ） |
 | PDCAサイクル | 未着手 | |
 | フェルミ推定 | 初稿済み | articles/thinking-frameworks/fermi-estimation.md（note投稿はまだ） |
 | 抽象化と具体化 | 未着手 | 自己分析にも接続可 |
@@ -51,7 +51,7 @@
 
 | テーマ | ステータス | 備考 |
 |--------|-----------|------|
-| ケース面接 | 未着手 | フェルミ推定・売上向上と接続 |
+| ケース面接 | 初稿済み | articles/interviews/case-interview.md（note投稿はまだ） |
 | STAR面接法 | 初稿済み | articles/interviews/star-method.md（note投稿はまだ） |
 | コンピテンシー面接 | 未着手 | |
 | 構造化面接 | 未着手 | |
@@ -63,7 +63,7 @@
 | 自己分析の進め方 | 未着手 | |
 | ガクチカ（学生時代に力を入れたこと）の作り方 | 初稿済み | articles/self-analysis/gakuchika.md（note投稿はまだ） |
 | Will-Can-Mustの整理 | 初稿済み | articles/self-analysis/will-can-must.md（note投稿はまだ） |
-| キャリアアンカー | 未着手 | |
+| キャリアアンカー | 初稿済み | articles/self-analysis/career-anchor.md（note投稿はまだ） |
 
 ## articles/business-skills（社会人基礎力・ビジネススキル）
 
