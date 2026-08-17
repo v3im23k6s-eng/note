@@ -464,7 +464,14 @@
     var area = $("#draftsArea");
     var empty = document.getElementById("emptyState");
     if (state.drafts.length === 0) {
-      area.innerHTML = '<div class="empty-state" id="emptyState">左の「トレーニング設定」を入力・保存してから、STEP1を押して始めてください。</div>';
+      area.innerHTML = '<div class="empty-state" id="emptyState">初めての場合はこの順番で進めてください。' +
+        '<ol>' +
+        '<li>上の「トレーニング設定」を開き、内容を自分の言葉に整えて「設定を保存」</li>' +
+        '<li>STEP1「指示文を作る」→「指示文をコピー」</li>' +
+        '<li>「Claudeを新しいタブで開く」→ 貼り付けて送信(検索がONだとなお良い)</li>' +
+        '<li>Claudeの回答をコピーし、STEP2に貼り付けて「解析してカード表示」</li>' +
+        '<li>気に入った案をコピー、またはXで下書きを開いて投稿し、「使用済みにする」</li>' +
+        '</ol></div>';
       return;
     }
     area.innerHTML = "";
