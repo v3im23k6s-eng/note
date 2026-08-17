@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="フルトレLab">
+<meta name="theme-color" content="#141410">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23141410'/%3E%3Ctext x='50' y='68' font-size='58' font-family='Georgia,serif' font-weight='700' fill='%23e3b23c' text-anchor='middle'%3EF%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23141410'/%3E%3Ctext x='50' y='68' font-size='58' font-family='Georgia,serif' font-weight='700' fill='%23e3b23c' text-anchor='middle'%3EF%3C/text%3E%3C/svg%3E">
+<title>フルトレ Content Lab v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+:root{
+  --bg:#141410;
+  --surface:#1d1d16;
+  --surface-2:#26261d;
+  --border:#3a3a2c;
+  --text:#f4efe2;
+  --text-dim:#a49d89;
+  --gold:#e3b23c;
+  --rust:#c4482e;
+  --olive:#7f9a72;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important; transition-duration:.001ms !important;}
+}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Noto Sans JP', system-ui, -apple-system, sans-serif;
+  line-height:1.6;
+}
+.eyebrow{
+  font-family:'Oswald', sans-serif;
+  font-weight:600;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--gold);
+  font-size:.72rem;
+}
+header{
+  padding:28px 20px 20px;
+  border-bottom:1px solid var(--border);
+}
+header h1{
+  margin:6px 0 4px;
+  font-size:1.5rem;
+  font-weight:700;
+}
+header p.sub{
+  margin:0 0 18px;
+  color:var(--text-dim);
+  font-size:.88rem;
+}
+.stats{
+  display:flex;
+  gap:22px;
+  flex-wrap:wrap;
+}
+.stat{ min-width:88px; }
+.stat .num{
+  font-family:'Oswald', sans-serif;
+  font-size:1.7rem;
+  font-weight:700;
+  color:var(--gold);
+  line-height:1;
+}
+.stat .label{ font-size:.72rem; color:var(--text-dim); margin-top:3px; }
+main{
+  max-width:960px;
+  margin:0 auto;
+  padding:20px;
+  display:grid;
+  grid-template-columns:300px 1fr;
+  gap:20px;
+  align-items:start;
+}
+@media (max-width:760px){ main{grid-template-columns:1fr;} }
+section.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+}
+details.card summary{
+  cursor:pointer;
+  font-family:'Oswald', sans-serif;
+  font-weight:600;
+  letter-spacing:.06em;
+  font-size:.9rem;
+  color:var(--text);
+  list-style:none;
+}
+details.card summary::-webkit-details-marker{display:none;}
+details.card summary::before{ content:'▸ '; color:var(--gold); }
+details.card[open] summary::before{ content:'▾ '; }
+details.card .body{ margin-top:14px; display:flex; flex-direction:column; gap:14px; }
+label{ font-size:.78rem; color:var(--text-dim); display:block; margin-bottom:6px; }
+textarea, input[type=text], input[type=number], select{
+  width:100%;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  font-family:inherit;
+  font-size:.86rem;
+  padding:9px 10px;
+  resize:vertical;
+}
+textarea:focus, input:focus, select:focus, button:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+.field small{ display:block; margin-top:4px; color:var(--text-dim); font-size:.72rem; }
+fieldset{ border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+fieldset legend{ font-size:.78rem; color:var(--text-dim); padding:0 6px; }
+.type-row{ display:flex; align-items:flex-start; gap:8px; margin:6px 0; font-size:.82rem; }
+.type-row input{ width:auto; }
+.type-row .desc{ color:var(--text-dim); font-size:.74rem; }
+.row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.btn{
+  font-family:'Oswald', sans-serif;
+  font-weight:600;
+  letter-spacing:.04em;
+  border:none;
+  border-radius:8px;
+  padding:10px 16px;
+  cursor:pointer;
+  font-size:.84rem;
+}
+.btn-primary{ background:var(--gold); color:#1a1a12; }
+.btn-primary:disabled{ background:#5a5238; color:#a49d89; cursor:not-allowed; }
+.btn-ghost{ background:transparent; color:var(--text); border:1px solid var(--border); }
+.btn-ghost:hover{ border-color:var(--gold); }
+.btn-x{ background:var(--olive); color:#10160f; }
+.btn-small{ font-family:inherit; font-weight:500; letter-spacing:0; font-size:.76rem; padding:6px 10px; border-radius:6px; }
+.save-note{ font-size:.76rem; color:var(--olive); min-height:1.2em; }
+.step{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:14px;
+}
+.step h3{
+  margin:0 0 8px;
+  font-family:'Oswald', sans-serif;
+  font-size:.86rem;
+  letter-spacing:.04em;
+  color:var(--gold);
+}
+.step p.hint{ font-size:.78rem; color:var(--text-dim); margin:4px 0 10px; }
+.set-header{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+.set-header h2{ font-size:1.05rem; margin:0; }
+.count-select{ font-size:.76rem; color:var(--text-dim); display:flex; align-items:center; gap:6px; }
+.count-select select{ width:auto; padding:5px 8px; }
+.empty-state{ border:1px dashed var(--border); border-radius:var(--radius); padding:22px; color:var(--text-dim); font-size:.86rem; }
+.empty-state ol{ margin:10px 0 0; padding-left:20px; }
+.empty-state li{ margin-bottom:4px; }
+.error-banner{ background:rgba(196,72,46,.12); border:1px solid var(--rust); color:#f0b7a8; border-radius:8px; padding:10px 12px; font-size:.82rem; margin-bottom:12px; }
+.draft-grid{ display:flex; flex-direction:column; gap:14px; }
+.draft-card{ background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:14px; }
+.draft-card.used{ opacity:.55; }
+.draft-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-family:'Oswald', sans-serif; flex-wrap:wrap; gap:6px; }
+.type-tag{ font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); border:1px solid var(--gold); border-radius:20px; padding:2px 9px; }
+.char-count{ font-size:.74rem; color:var(--text-dim); }
+.char-count.over{ color:var(--rust); }
+.dup-warn{ font-size:.74rem; color:var(--rust); margin-top:6px; }
+.draft-text{ white-space:pre-wrap; font-size:.92rem; margin:4px 0 10px; }
+.thread-part{ border-top:1px dashed var(--border); padding-top:10px; margin-top:10px; }
+.thread-part:first-of-type{ border-top:none; padding-top:0; margin-top:6px; }
+.thread-part .pnum{ font-size:.7rem; color:var(--text-dim); margin-bottom:4px; }
+.draft-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.feedback{ font-size:.74rem; color:var(--olive); margin-left:4px; }
+.history-list{ display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto; }
+.history-item{ border-bottom:1px solid var(--border); padding-bottom:8px; font-size:.8rem; display:flex; justify-content:space-between; gap:10px; }
+.history-item .meta{ color:var(--text-dim); font-size:.7rem; margin-bottom:2px; }
+.history-item .txt{ color:var(--text); }
+.history-item button{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:.7rem; flex-shrink:0; }
+.history-item button:hover{ color:var(--rust); }
+.history-footer{ margin-top:10px; text-align:right; }
+.quicklinks{ display:flex; flex-wrap:wrap; gap:8px; }
+.quicklinks a.btn{ text-decoration:none; display:inline-block; }
+.copybox textarea{ font-family:ui-monospace, monospace; font-size:.78rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Content Training Log</div>
+  <h1>フルトレ Content Lab v2</h1>
+  <p class="sub">X投稿 → note流入トレーニングメニュー(スマホ完結版)</p>
+  <div class="stats">
+    <div class="stat"><div class="num" id="statTotal">0</div><div class="label">使用済み投稿</div></div>
+    <div class="stat"><div class="num" id="statToday">0</div><div class="label">本日の使用数</div></div>
+    <div class="stat"><div class="num" id="statQuote">0</div><div class="label">引用RTコメント</div></div>
+    <div class="stat"><div class="num" id="statLast">–</div><div class="label">直近セット</div></div>
+  </div>
+</header>
+
+<main>
+  <details class="card" id="settingsPanel">
+    <summary>トレーニング設定</summary>
+    <div class="body">
+      <div class="field">
+        <label for="persona">ペルソナ・実績・トーン</label>
+        <textarea id="persona" rows="6"></textarea>
+        <small>アカウントの実績や語り口。編集して自分の言葉に整えてください。</small>
+      </div>
+      <div class="field">
+        <label for="pastTweets">過去の投稿例（1行1件・文体参考用）</label>
+        <textarea id="pastTweets" rows="5" placeholder="例）就活で一番後悔してるのは、〇〇を早くやらなかったこと。"></textarea>
+        <small>ここに書いた文章そのものは再利用しません。口調・語彙の参考にのみ使います。</small>
+      </div>
+      <div class="field">
+        <label for="noteLinks">誘導したいnote記事（1行1件：タイトルとURL）</label>
+        <textarea id="noteLinks" rows="4"></textarea>
+      </div>
+      <div class="field">
+        <label for="hotThemes">今よく見かける鉄板テーマ・切り口（自分の言葉でメモ・最大3件が引用RTのクイックリンクにも使われます）</label>
+        <textarea id="hotThemes" rows="4" placeholder="例）ES締切ギリギリ勢あるある／面接で聞かれると焦る質問トップ3"></textarea>
+        <small>他アカウントの文章そのものは書かないでください。テーマ・切り口だけをメモすれば、文章は毎回ゼロから新しく書きます。</small>
+      </div>
+      <div class="field">
+        <label for="watchAccounts">巡回したい就活系アカウント（1行1件：@なしのユーザー名）</label>
+        <textarea id="watchAccounts" rows="3" placeholder="例）fluture_74"></textarea>
+        <small>引用RTセクションに、各アカウントのページへ一発で飛べるリンクを作ります。</small>
+      </div>
+      <div class="field">
+        <label for="affiliateItems">紹介したい本・商品（アフィリエイト・任意／1行1件）</label>
+        <textarea id="affiliateItems" rows="3" placeholder="例）〇〇という本｜ES対策に良かった一言メモ｜https://amzn.to/xxxx"></textarea>
+        <small>実在する商品のみ登録してください。紹介文には自動でPR表記の指示を入れます。</small>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="useWebSearch" checked style="width:auto; margin-right:6px;">生成時にClaude側の検索機能を使う想定にする</label>
+        <textarea id="searchKeywords" rows="5"></textarea>
+        <small>貼り付け先のClaudeチャットで検索(Web検索)がオンになっていることを前提にした指示文を生成します。キーワードは出発点であり、Claude自身にもリストにない話題を探させる指示を必ず含めます。</small>
+      </div>
+      <fieldset>
+        <legend>投稿タイプ</legend>
+        <div class="type-row"><input type="checkbox" id="t_empathy" checked><label for="t_empathy" style="margin:0;">共感型<span class="desc">／就活生の本音を言語化する</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_story" checked><label for="t_story" style="margin:0;">ストーリー型<span class="desc">／場面→出来事→気持ち→学びの実体験</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_tips" checked><label for="t_tips" style="margin:0;">Tips型<span class="desc">／今日から使える具体ノウハウ</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_contrarian" checked><label for="t_contrarian" style="margin:0;">逆説型<span class="desc">／就活の思い込みに切り込む</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_credibility" checked><label for="t_credibility" style="margin:0;">実績型<span class="desc">／SS獲得・内定実績など幅広い実績で信頼を積む</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_cta" checked><label for="t_cta" style="margin:0;">直結型<span class="desc">／note記事へ自然に誘導</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_news" checked><label for="t_news" style="margin:0;">最新情報型<span class="desc">／検索した最新ニュース・トレンドを解説</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_contrast" checked><label for="t_contrast" style="margin:0;">比較型（❌⭕）<span class="desc">／NG行動とOK行動を❌⭕で対比する</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_company" checked><label for="t_company" style="margin:0;">企業紹介型<span class="desc">／実在企業の締切・事業内容などを紹介（検索前提オフ時は使用不可）</span></label></div>
+        <div class="type-row"><input type="checkbox" id="t_affiliate"><label for="t_affiliate" style="margin:0;">アフィリエイト紹介型<span class="desc">／登録した本・商品をPR表記つきで紹介</span></label></div>
+      </fieldset>
+      <div class="field">
+        <label for="targetLen">目標文字数(40〜400)</label>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="targetLen" value="130">
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="allowThreads" checked style="width:auto; margin-right:6px;">140字を超える内容は、返信で繋げる「スレッド」形式にしてよい</label>
+      </div>
+      <div class="field">
+        <label for="generateCount">1回あたりの生成件数</label>
+        <select id="generateCount">
+          <option value="6" selected>6件</option>
+          <option value="7">7件</option>
+          <option value="8">8件</option>
+        </select>
+        <small>1日1回まとめて生成する運用を想定し、6〜8件から選べます。</small>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" id="saveBtn">設定を保存</button>
+        <span class="save-note" id="saveNote"></span>
+      </div>
+    </div>
+  </details>
+
+  <div>
+    <section class="card" style="margin-bottom:20px;">
+      <div class="set-header">
+        <h2>今日のセット</h2>
+      </div>
+      <div class="step">
+        <h3>STEP 1. 生成用の指示文を作る</h3>
+        <p class="hint">下のボタンで、今の設定・履歴をもとにした指示文を組み立てます。</p>
+        <button class="btn btn-primary" id="buildPromptBtn">指示文を作る</button>
+        <div id="promptArea" style="margin-top:12px; display:none;">
+          <div class="copybox field">
+            <textarea id="promptText" rows="8" readonly></textarea>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <button class="btn btn-x btn-small" id="copyPromptBtn">指示文をコピー</button>
+            <a class="btn btn-ghost btn-small" href="https://claude.ai/new" target="_blank" rel="noopener">Claudeを新しいタブで開く</a>
+            <span class="feedback" id="copyPromptFeedback"></span>
+          </div>
+        </div>
+      </div>
+      <div class="step" style="margin-top:14px;">
+        <h3>STEP 2. Claudeの回答を貼り付ける</h3>
+        <p class="hint">Claudeに指示文を貼り付けて送信し、返ってきた回答(JSON)をそのままここに貼り付けてください。前後に説明文が付いていても構いません。</p>
+        <textarea id="pasteArea" rows="6" placeholder="ここにClaudeの回答をペースト"></textarea>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn btn-primary" id="parseBtn">解析してカード表示</button>
+        </div>
+      </div>
+      <div id="errorArea" style="margin-top:14px;"></div>
+      <div id="draftsArea" style="margin-top:14px;">
+        <div class="empty-state" id="emptyState">
+          左の「トレーニング設定」を入力・保存してから、STEP1を押して始めてください。
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:20px;">
+      <div class="set-header">
+        <h2>引用リツイート コメント</h2>
+        <div class="row">
+          <span class="count-select">
+            件数
+            <select id="qtCountSelect">
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+            </select>
+          </span>
+        </div>
+      </div>
+      <div class="field">
+        <label>引用するポストをXで探す</label>
+        <div class="quicklinks" id="qtQuickLinks"></div>
+        <small>タップするとXの検索・アカウントページが別タブで開きます。伸びている投稿を見つけたら、そのままXの「引用」機能を使ってください。</small>
+      </div>
+      <div class="field">
+        <label for="qtUrl">対象ポストのURL（任意・入力すると「Xで下書きを開く」に反映されます）</label>
+        <input type="text" id="qtUrl" placeholder="https://x.com/...">
+      </div>
+      <div class="field">
+        <label for="qtGist">気になった投稿の内容（任意・空欄でも生成できます）</label>
+        <input type="text" id="qtGist" maxlength="140" placeholder="例）コネ入社は悪いことじゃないという主張の投稿／空欄なら汎用パターンを作成">
+      </div>
+      <div class="step">
+        <h3>STEP 1. 指示文を作る</h3>
+        <button class="btn btn-primary" id="qtBuildPromptBtn">指示文を作る</button>
+        <div id="qtPromptArea" style="margin-top:12px; display:none;">
+          <div class="copybox field"><textarea id="qtPromptText" rows="6" readonly></textarea></div>
+          <div class="row" style="margin-top:8px;">
+            <button class="btn btn-x btn-small" id="qtCopyPromptBtn">指示文をコピー</button>
+            <a class="btn btn-ghost btn-small" href="https://claude.ai/new" target="_blank" rel="noopener">Claudeを新しいタブで開く</a>
+            <span class="feedback" id="qtCopyPromptFeedback"></span>
+          </div>
+        </div>
+      </div>
+      <div class="step" style="margin-top:14px;">
+        <h3>STEP 2. Claudeの回答を貼り付ける</h3>
+        <textarea id="qtPasteArea" rows="5" placeholder="ここにClaudeの回答をペースト"></textarea>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn btn-primary" id="qtParseBtn">解析してカード表示</button>
+        </div>
+      </div>
+      <div id="qtErrorArea" style="margin-top:14px;"></div>
+      <div id="qtDraftsArea" style="margin-top:14px;">
+        <div class="empty-state" id="qtEmptyState">
+          上のリンクから伸びている投稿を探して引用RTしましょう。
+        </div>
+      </div>
+    </section>
+
+    <details class="card" id="historyPanel" style="margin-bottom:20px;">
+      <summary>トレーニング履歴</summary>
+      <div class="body">
+        <div class="history-list" id="historyList"></div>
+        <div class="history-footer">
+          <button class="btn btn-ghost btn-small" id="clearHistoryBtn">履歴を全て削除</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="card" id="backupPanel">
+      <summary>バックアップ / 復元</summary>
+      <div class="body">
+        <p class="hint" style="margin:0; color:var(--text-dim); font-size:.78rem;">ブラウザのデータが消えた場合に備えて、設定と履歴をテキストとして書き出し・書き戻しできます。</p>
+        <div class="row">
+          <button class="btn btn-ghost btn-small" id="exportBtn">エクスポート(コピー用に表示)</button>
+        </div>
+        <textarea id="exportArea" rows="4" readonly style="display:none;"></textarea>
+        <label for="importArea" style="margin-top:8px;">復元する場合はここに貼り付け</label>
+        <textarea id="importArea" rows="4" placeholder="エクスポートしたテキストを貼り付け"></textarea>
+        <div class="row">
+          <button class="btn btn-ghost btn-small" id="importBtn">貼り付けた内容で復元する</button>
+        </div>
+      </div>
+    </details>
+  </div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
