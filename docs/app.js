@@ -482,7 +482,9 @@
       card.className = "draft-card" + (d.used ? " used" : "");
 
       var fullText = d.thread ? d.thread.join("\n続き↓\n") : d.text;
-      var dup = dupScoreAgainstHistoryAndBatch(fullText, idx);
+      // 使用済みにした投稿は、自分自身が履歴に追加された直後の再描画で「自分自身」と
+      // 比較されて100%一致してしまうため、使用済みカードでは重複チェックを行わない。
+      var dup = d.used ? 0 : dupScoreAgainstHistoryAndBatch(fullText, idx);
 
       var top = document.createElement("div");
       top.className = "draft-top";
