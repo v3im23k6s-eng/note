@@ -237,6 +237,69 @@
     return result;
   }
 
+  // ---------- keyword rotation (話題の偏り防止) ----------
+  var KEYWORD_LOOKBACK = 40; // 型の割当(直近15件)より大きい窓で見る。キーワード数が多いため
+
+  function parseKeywordPool(text) {
+    var lines = String(text || "").split("\n");
+    var timely = [];
+    var evergreen = [];
+    var currentTimely = false;
+    lines.forEach(function (raw) {
+      var line = raw.trim();
+      if (!line) return;
+      var headerMatch = line.match(/^\[(.+)\]$/);
+      if (headerMatch) {
+        currentTimely = /締切|時期トレンド/.test(headerMatch[1]);
+        return;
+      }
+      if (currentTimely) timely.push(line); else evergreen.push(line);
+    });
+    return { timely: timely, evergreen: evergreen };
+  }
+
+  function pickLeastUsedKeywords(list, n, usage, alreadyPicked) {
+    if (!list || list.length === 0) return [];
+    var shuffled = list.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+    }
+    shuffled.sort(function (a, b) { return (usage[a] || 0) - (usage[b] || 0); });
+    var used = {};
+    (alreadyPicked || []).forEach(function (k) { used[k] = true; });
+    var picked = [];
+    for (var k = 0; k < shuffled.length && picked.length < n; k++) {
+      if (!used[shuffled[k]]) { picked.push(shuffled[k]); used[shuffled[k]] = true; }
+    }
+    // プールがnより小さい場合のみ、やむを得ず重複させて埋める
+    var idx = 0;
+    while (picked.length < n && shuffled.length > 0) { picked.push(shuffled[idx % shuffled.length]); idx++; }
+    return picked;
+  }
+
+  // 「タイプ」の自動割当と同じ考え方で、検索キーワードも直近使っていないものを
+  // コード側で選んでローテーションする(AI任せの偏り防止)。
+  // 締切・時期トレンド系は毎回1枠を優先的に確保しつつ、それ以外は使用頻度の低い順に選ぶ。
+  function assignKeywords(count) {
+    var pool = parseKeywordPool(state.settings.searchKeywords || DEFAULT_SEARCH_KEYWORDS);
+    var posts = state.history.filter(function (h) { return h.kind === "post"; }).slice(-KEYWORD_LOOKBACK);
+    var usage = {};
+    posts.forEach(function (h) { if (h.keyword) usage[h.keyword] = (usage[h.keyword] || 0) + 1; });
+
+    var result = [];
+    if (pool.timely.length > 0 && count > 0) {
+      result = result.concat(pickLeastUsedKeywords(pool.timely, 1, usage, []));
+    }
+    var remaining = count - result.length;
+    if (remaining > 0) {
+      var evergreenPool = pool.evergreen.length ? pool.evergreen : pool.timely;
+      result = result.concat(pickLeastUsedKeywords(evergreenPool, remaining, usage, result));
+    }
+    while (result.length < count) result.push(null); // キーワード一覧が空の場合の保険
+    return result;
+  }
+
   // ---------- prompt building ----------
   function todayStr() {
     var d = new Date();
@@ -248,10 +311,13 @@
     var gate = applyFrequencyGates();
     var count = parseInt(s.generateCount, 10) || 6;
     var assigned = assignTypes(gate.enabled, count);
+    var keywords = s.useWebSearch ? assignKeywords(count) : new Array(count).fill(null);
 
     var typeListText = assigned.map(function (key, idx) {
       var def = TYPE_DEFS.filter(function (t) { return t.key === key; })[0];
-      return (idx + 1) + "件目: " + def.label + "（" + def.desc + "）";
+      var kw = keywords[idx];
+      var kwText = kw ? "／起点キーワード: 「" + kw + "」" : "";
+      return (idx + 1) + "件目: " + def.label + "（" + def.desc + "）" + kwText;
     }).join("\n");
 
     var recentPosts = state.history.filter(function (h) { return h.kind === "post"; }).slice(-20);
@@ -259,6 +325,11 @@
     var recentHistoryTexts = recentPosts.length
       ? recentPosts.map(function (h) { return "・" + h.text.replace(/\n/g, " "); }).join("\n")
       : "(まだ使用済み履歴はありません)";
+    var recentKwPosts = state.history.filter(function (h) { return h.kind === "post"; }).slice(-KEYWORD_LOOKBACK);
+    var recentKeywords = recentKwPosts.map(function (h) { return h.keyword; }).filter(Boolean);
+    var recentKeywordsText = recentKeywords.length
+      ? Array.from(new Set(recentKeywords)).join("、")
+      : "(まだありません)";
 
     var gateNotesText = gate.notes.length ? gate.notes.join("\n") : "(今回、頻度による除外はありません)";
     var suppressText = gate.suppressDesign
@@ -295,10 +366,12 @@
       "【紹介したい本・商品（アフィリエイト・登録がある場合のみアフィリエイト紹介型で使用）】",
       s.affiliateItems || "(未登録。アフィリエイト紹介型は今回割り当てられていても書けません。他のタイプに振り替えてください)",
       "",
-      "【最新情報の検索・学習について（重要）】",
-      "このチャットで検索機能が使える場合は、投稿を書く前に必ず「今、就活生の間で話題になっていること」を調べてください。下のキーワードリストは出発点であり、これに縛られる必要はありません。ニュースサイトの見出しや検索結果から気になる話題が見つかれば、リストにない言葉でも自由に追加で検索してください。" + count + "件の中で使う話題・切り口はできるだけ幅広く分散させ、同じような検索キーワード・同じような切り口に偏らないようにしてください。",
-      "1回目の検索: 下のリストの「締切・時期トレンド系」から1つ、または本日の日付に合いそうな独自のキーワードで、締切や選考スケジュールなど今すぐ役立つ時期情報を検索する（優先度高め）。",
-      "2回目以降の検索: リスト内の思考法・フレームワーク・選考手法・ビジネス理解などから、直近の話題タグでまだ扱っていない分野を意識して検索する。リストにない新しいキーワードも自分で考えて検索してよい。企業紹介型を書く場合は、実在する具体的な企業名で検索し、締切・事業内容・年収などの情報を確認する。",
+      "【今回の検索キーワード割り当て（重要・厳守）】",
+      s.useWebSearch
+        ? "検索機能が使える場合、上の「投稿タイプ」一覧に書かれている『起点キーワード』を、それぞれの投稿の検索の出発点として必ず使ってください（直近" + KEYWORD_LOOKBACK + "件で使っていないキーワードを、システム側がローテーションで選んでいます。AIの判断で似たようなキーワードに差し替えないこと）。そこから見つかった内容をもとに書き、さらに関連して気になる話題があれば自由に追加で検索してもかまいません。JSON出力の`keyword`には、実際に起点として使ったキーワードを表記を変えずにそのまま入れてください。『起点キーワード』の記載がない投稿(件数がキーワード数を超える場合)は、下の一覧やニュース検索から自分でテーマを選び、`keyword`には自分で選んだ語を入れてください。企業紹介型を書く場合は、実在する具体的な企業名でも検索し、締切・事業内容・年収などの情報を確認してください。"
+        : "検索機能がオフのため、この節は無視して手元の情報のみで書いてください。企業紹介型・最新情報型は使えません。JSON出力の`keyword`には話題を表す短い語（例:自己分析）を入れてください。",
+      "",
+      "【検索キーワード一覧（カテゴリ別の参考資料。起点キーワード以外は補助的に使う）】",
       s.searchKeywords || DEFAULT_SEARCH_KEYWORDS,
       "検索結果を使うときのルール:",
       "- 「日経」「ニュース」等の一般的な言及ではなく、検索で実際に見つかった具体的な出来事・データ・企業名・締切日・傾向を最低1つは拾う。何も具体的な情報が見つからなければ、無理に最新情報型・企業紹介型を書かず、他のタイプに切り替えてよい。",
@@ -307,17 +380,16 @@
       "- 検索で確認できない具体的な数字・日付・事実は書かない。企業紹介型は特にこの点を厳守する。",
       "- 1年以上前の情報など明らかに古いものは「最新情報」として使わない。",
       "- 最新情報型の投稿は、事実の要約だけで終わらせず、必ず「それが就活生にとって何を意味するか」というこのペルソナ自身の解釈・アドバイスを1文以上添える。",
-      "- 検索で得た「今の空気感」は最新情報型・企業紹介型以外の投稿の話題選びにも自由に活かしてよい。",
-      "（検索機能が使えない/オフの場合は、手元の情報のみで書いてください。企業紹介型・最新情報型は使えません。）",
       "",
-      "【直近使用した話題タグ（できるだけこれと同じ・近い話題は避けること）】",
-      recentTopics,
+      "【直近使用した話題タグ・キーワード（できるだけこれと同じ・近い話題は避けること）】",
+      "話題タグ: " + recentTopics,
+      "キーワード: " + recentKeywordsText,
       "",
       "【直近の使用済み履歴（この内容と同じ・酷似した投稿は禁止）】",
       recentHistoryTexts,
       "",
       "【厳守ルール】",
-      "0. 内容がワンパターン化しないよう、上の「話題タグ」一覧を確認し、そこにない新しい話題を選ぶこと。ES・ガクチカ・面接などの定番テーマばかりに逃げず、思考法・フレームワーク・締切トレンドなど幅広いカテゴリからローテーションする。" + count + "件の中でも話題が偏らないようにする。",
+      "0. 内容がワンパターン化しないよう、各投稿に割り当てられた『起点キーワード』を必ず守ること(自分の判断でES・ガクチカ・面接など使い慣れたテーマに寄せ直さない)。あわせて上の「直近使用した話題タグ・キーワード」も確認し、そこにない新しい話題を選ぶこと。" + count + "件の中でも話題が偏らないようにする。",
       "1. 過去投稿例・使用済み履歴と同じ文章やほぼ同じ言い回しを繰り返さない。文体や熱量は参考にしてよいが、文章自体は必ず新規に書く。",
       "2. 他の就活支援アカウントの特定の投稿を真似ない。",
       "3. ペルソナに書かれていない実績や数字、登録されていない商品を捏造しない。",
@@ -329,8 +401,8 @@
       "9. 出力は説明文やMarkdown記法（コードブロック含む）を一切含めず、次のJSON配列のみを出力すること。前置きの説明も理由の説明も一切書かない。出力の最初の文字は必ず [ 、最後の文字は必ず ] にすること。",
       "",
       "出力形式（これ以外は絶対に出力しない）:",
-      "通常投稿: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ（2〜8字程度）\",\"text\":\"投稿本文（140字以内）\"}",
-      "スレッド投稿（スレッド機能ONの場合のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"thread\":[\"1パート目(140字以内)\",\"2パート目(140字以内)\"]}",
+      "通常投稿: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ（2〜8字程度）\",\"keyword\":\"実際に起点にした検索キーワード\",\"text\":\"投稿本文（140字以内）\"}",
+      "スレッド投稿（スレッド機能ONの場合のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"thread\":[\"1パート目(140字以内)\",\"2パート目(140字以内)\"]}",
       "上記のどちらかの形式を1件ずつ選び、配列にして出力する: [{...}, {...}]"
     ].join("\n");
   }
@@ -502,8 +574,9 @@
 
       var top = document.createElement("div");
       top.className = "draft-top";
+      var topicLabel = [d.topic, d.keyword].filter(Boolean).join(" ・ ");
       top.innerHTML = '<span class="type-tag">' + escapeHtml(TYPE_LABEL[d.type] || d.type) + '</span>' +
-        '<span class="char-count">' + (d.topic ? escapeHtml(d.topic) : "") + '</span>';
+        '<span class="char-count">' + escapeHtml(topicLabel) + '</span>';
       card.appendChild(top);
 
       if (d.thread && d.thread.length) {
@@ -577,6 +650,7 @@
           kind: "post",
           type: d.type,
           topic: d.topic || "",
+          keyword: d.keyword || "",
           text: fullText
         });
         saveHistory();
@@ -740,6 +814,7 @@
           return {
             type: item.type || "empathy",
             topic: item.topic || "",
+            keyword: item.keyword || "",
             text: item.thread ? undefined : (item.text || ""),
             thread: Array.isArray(item.thread) ? item.thread : undefined,
             used: false
