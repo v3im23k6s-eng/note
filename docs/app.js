@@ -28,6 +28,24 @@
   var TYPE_LABEL = {};
   TYPE_DEFS.forEach(function (t) { TYPE_LABEL[t.key] = t.label; });
 
+  // 指示文では投稿タイプを日本語ラベル(例:「Tips型」)で提示しているため、
+  // Claudeの回答もラベルのまま返ってくることが多い。内部のタイプ集計・頻度ゲートは
+  // 英語キー(例: "tips")を前提にしているため、ラベル/キーどちらで返っても
+  // 正しく英語キーへ正規化する。未知の値はempathyへフォールバックする。
+  function normalizeTypeKey(raw) {
+    if (!raw) return "empathy";
+    var s = String(raw).trim();
+    for (var i = 0; i < TYPE_DEFS.length; i++) {
+      if (TYPE_DEFS[i].key === s) return TYPE_DEFS[i].key;
+    }
+    for (var j = 0; j < TYPE_DEFS.length; j++) {
+      if (TYPE_DEFS[j].label === s || TYPE_DEFS[j].label.replace(/[（(].*[）)]/, "") === s.replace(/[（(].*[）)]/, "")) {
+        return TYPE_DEFS[j].key;
+      }
+    }
+    return "empathy";
+  }
+
   var DEFAULT_PERSONA =
     "「フルトレ就活」/ @fluture_74\n" +
     "ES・ガクチカ・面接・SPI・自己分析・OB訪問・業界研究など、就職活動全般を実体験ベースで支援するアカウント。専門分野の一つとしてデザイン思考テスト(デザシコ)も扱うが、投稿全体の1〜2割程度に留め、話題を独占しない。\n" +
@@ -812,7 +830,7 @@
         if (!Array.isArray(arr) || arr.length === 0) throw new Error("配列が空、または形式が正しくありません。");
         state.drafts = arr.map(function (item) {
           return {
-            type: item.type || "empathy",
+            type: normalizeTypeKey(item.type),
             topic: item.topic || "",
             keyword: item.keyword || "",
             text: item.thread ? undefined : (item.text || ""),
