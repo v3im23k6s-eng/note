@@ -201,6 +201,108 @@
     return u;
   }
 
+  // ---------- 画像カード生成(canvas・APIやログイン不要) ----------
+  function wrapLinesForCanvas(ctx, text, maxWidth) {
+    var paragraphs = String(text).split("\n");
+    var lines = [];
+    paragraphs.forEach(function (para) {
+      if (para === "") { lines.push(""); return; }
+      var chars = Array.from(para);
+      var line = "";
+      for (var i = 0; i < chars.length; i++) {
+        var test = line + chars[i];
+        if (ctx.measureText(test).width > maxWidth && line !== "") {
+          lines.push(line);
+          line = chars[i];
+        } else {
+          line = test;
+        }
+      }
+      if (line !== "") lines.push(line);
+    });
+    return lines;
+  }
+
+  // 比較型(❌⭕)は箇条書きとして見せた方が伝わるため、❌/⭕の直前で改行を入れる
+  function preprocessCardText(text, typeKey) {
+    if (typeKey !== "contrast") return text;
+    var parts = String(text).split(/(?=[❌⭕])/).map(function (s) { return s.trim(); }).filter(Boolean);
+    return parts.length > 1 ? parts.join("\n") : text;
+  }
+
+  function buildTextCardDataUrl(d) {
+    var W = 1200, H = 675;
+    var canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#141410";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#e3b23c";
+    ctx.fillRect(0, 0, 10, H);
+
+    ctx.fillStyle = "#e3b23c";
+    ctx.font = "600 28px 'Noto Sans JP', sans-serif";
+    ctx.fillText(TYPE_LABEL[d.type] || d.type, 64, 84);
+
+    ctx.fillStyle = "#a49d89";
+    ctx.font = "500 24px 'Noto Sans JP', sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText("@fluture_74", W - 48, H - 40);
+    ctx.textAlign = "left";
+
+    var text = preprocessCardText(d.thread ? d.thread.join("\n") : d.text, d.type);
+    var maxWidth = W - 64 - 64;
+    var top = 150, bottom = H - 90;
+    var availableHeight = bottom - top;
+
+    var fontSize = 56, lineHeight, lines;
+    while (fontSize >= 26) {
+      ctx.font = "700 " + fontSize + "px 'Noto Sans JP', sans-serif";
+      lineHeight = Math.round(fontSize * 1.5);
+      lines = wrapLinesForCanvas(ctx, text, maxWidth);
+      if (lines.length * lineHeight <= availableHeight) break;
+      fontSize -= 2;
+    }
+    ctx.font = "700 " + fontSize + "px 'Noto Sans JP', sans-serif";
+    var startY = top + fontSize;
+    lines.forEach(function (line, i) {
+      if (d.type === "contrast") {
+        if (line.indexOf("❌") === 0) ctx.fillStyle = "#c4482e";
+        else if (line.indexOf("⭕") === 0) ctx.fillStyle = "#7f9a72";
+        else ctx.fillStyle = "#f4efe2";
+      } else {
+        ctx.fillStyle = "#f4efe2";
+      }
+      ctx.fillText(line, 64, startY + i * lineHeight);
+    });
+    return canvas.toDataURL("image/png");
+  }
+
+  // ---------- 画像生成プロンプト(外部の無料画像生成ツールに貼り付ける用) ----------
+  var IMAGE_MOOD_BY_TYPE = {
+    company: "オフィスビルや都市の高層ビル群を見上げるような、洗練された雰囲気の写真風イラスト",
+    story: "物語の一場面を象徴するような、落ち着いた色合いの写真風イラスト",
+    credibility: "達成感や信頼感を象徴する、シンプルで洗練された抽象的なビジュアル",
+    news: "最新のビジネストレンドを感じさせる、都会的で洗練された写真風イラスト"
+  };
+  function buildImagePrompt(d) {
+    var mood = IMAGE_MOOD_BY_TYPE[d.type] || "テーマを象徴する、シンプルで洗練された写真風イラスト";
+    var text = d.thread ? d.thread.join(" ") : d.text;
+    return [
+      "以下のX投稿に添える画像を1枚生成してください。",
+      "",
+      "投稿内容:「" + text + "」",
+      "",
+      "条件:",
+      "- " + mood,
+      "- 文字・ロゴ・図表は入れず、雰囲気を伝えるビジュアルのみにする",
+      "- 実在の企業ロゴや商標、実在の建物そのものは描かない(著作権・商標に配慮したイメージ画像にする)",
+      "- 派手すぎず、就活生向けの真面目で信頼感のあるトーン",
+      "- 横長(16:9程度)"
+    ].join("\n");
+  }
+
   // ---------- type assignment & frequency gates ----------
   function enabledTypeKeys() {
     return TYPE_DEFS.filter(function (t) { return !!state.settings.types[t.key]; }).map(function (t) { return t.key; });
@@ -654,6 +756,67 @@
         xBtn.rel = "noopener";
         actions.appendChild(xBtn);
         actions.appendChild(fbAll);
+
+        var imagePanel = document.createElement("div");
+        imagePanel.className = "image-panel";
+        imagePanel.style.display = "none";
+
+        var cardImgBtn = document.createElement("button");
+        cardImgBtn.className = "btn btn-ghost btn-small";
+        cardImgBtn.textContent = "画像カードを作る";
+        cardImgBtn.addEventListener("click", function () {
+          var dataUrl = buildTextCardDataUrl(d);
+          imagePanel.innerHTML = "";
+          var img = document.createElement("img");
+          img.src = dataUrl;
+          imagePanel.appendChild(img);
+          var dl = document.createElement("a");
+          dl.className = "btn btn-x btn-small";
+          dl.textContent = "画像をダウンロード";
+          dl.href = dataUrl;
+          dl.download = "furutore-card.png";
+          imagePanel.appendChild(dl);
+          imagePanel.style.display = "block";
+        });
+        actions.appendChild(cardImgBtn);
+
+        var imgPromptBtn = document.createElement("button");
+        imgPromptBtn.className = "btn btn-ghost btn-small";
+        imgPromptBtn.textContent = "画像生成プロンプト";
+        imgPromptBtn.addEventListener("click", function () {
+          imagePanel.innerHTML = "";
+          var ta = document.createElement("textarea");
+          ta.rows = 6;
+          ta.readOnly = true;
+          ta.value = buildImagePrompt(d);
+          imagePanel.appendChild(ta);
+          var row = document.createElement("div");
+          row.className = "row";
+          row.style.marginTop = "6px";
+          var copyPromptBtn = document.createElement("button");
+          copyPromptBtn.className = "btn btn-x btn-small";
+          copyPromptBtn.textContent = "プロンプトをコピー";
+          var fbImg = document.createElement("span");
+          fbImg.className = "feedback";
+          copyPromptBtn.addEventListener("click", function () { copyText(ta.value, fbImg); });
+          row.appendChild(copyPromptBtn);
+          var bingLink = document.createElement("a");
+          bingLink.className = "btn btn-ghost btn-small";
+          bingLink.textContent = "Bing Image Creatorを開く";
+          bingLink.href = "https://www.bing.com/images/create";
+          bingLink.target = "_blank"; bingLink.rel = "noopener";
+          row.appendChild(bingLink);
+          var canvaLink = document.createElement("a");
+          canvaLink.className = "btn btn-ghost btn-small";
+          canvaLink.textContent = "Canvaを開く";
+          canvaLink.href = "https://www.canva.com/ai-image-generator/";
+          canvaLink.target = "_blank"; canvaLink.rel = "noopener";
+          row.appendChild(canvaLink);
+          row.appendChild(fbImg);
+          imagePanel.appendChild(row);
+          imagePanel.style.display = "block";
+        });
+        actions.appendChild(imgPromptBtn);
       }
 
       var usedBtn = document.createElement("button");
@@ -680,6 +843,7 @@
       actions.appendChild(usedBtn);
 
       card.appendChild(actions);
+      if (!d.thread) card.appendChild(imagePanel);
       grid.appendChild(card);
     });
     area.appendChild(grid);
