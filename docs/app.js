@@ -230,50 +230,71 @@
     return parts.length > 1 ? parts.join("\n") : text;
   }
 
-  function buildTextCardDataUrl(d) {
-    var W = 1200, H = 675;
+  // 白地・カラフルなテキストカードを生成する。
+  // cardText: 画像に書く本文。longForm: 300〜400字程度の画像化投稿用に、縦長・小さめフォントで多めの文字量に対応する。
+  function buildTextCardDataUrl(d, opts) {
+    opts = opts || {};
+    var longForm = !!opts.longForm;
+    var cardText = opts.cardText || (d.thread ? d.thread.join("\n") : d.text);
+    var text = preprocessCardText(cardText, d.type);
+
+    var W = 1200;
+    var top = longForm ? 140 : 150;
+    var bottomMargin = 90;
+    var maxWidth = W - 64 - 64;
+
+    // 文字サイズ・改行位置を先に計測用canvasで求め、その分量にちょうど収まる
+    // 高さの画像を作る(短文カードは675固定、長文カードは内容に応じて可変・上限1600)。
+    var measure = document.createElement("canvas");
+    measure.width = W; measure.height = 10;
+    var mctx = measure.getContext("2d");
+
+    var fontSize = longForm ? 44 : 56;
+    var floor = longForm ? 28 : 26;
+    var fixedH = longForm ? null : 675;
+    var maxH = longForm ? 1600 : 675;
+    var lineHeight, lines, H;
+    while (true) {
+      mctx.font = "700 " + fontSize + "px 'Noto Sans JP', sans-serif";
+      lineHeight = Math.round(fontSize * (longForm ? 1.6 : 1.5));
+      lines = wrapLinesForCanvas(mctx, text, maxWidth);
+      var neededH = top + lines.length * lineHeight + bottomMargin;
+      H = fixedH || Math.max(700, Math.min(maxH, neededH));
+      var fits = fixedH ? neededH <= fixedH : neededH <= maxH;
+      if (fits || fontSize <= floor) break;
+      fontSize -= 2;
+    }
+
     var canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
     var ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#141410";
+    // 白地(視認性重視)。アクセントバーとラベルはブランドカラーで色を残す。
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#e3b23c";
-    ctx.fillRect(0, 0, 10, H);
+    ctx.fillRect(0, 0, 12, H);
 
-    ctx.fillStyle = "#e3b23c";
-    ctx.font = "600 28px 'Noto Sans JP', sans-serif";
-    ctx.fillText(TYPE_LABEL[d.type] || d.type, 64, 84);
+    ctx.fillStyle = "#a67c1e";
+    ctx.font = "600 " + (longForm ? 26 : 28) + "px 'Noto Sans JP', sans-serif";
+    ctx.fillText(TYPE_LABEL[d.type] || d.type, 64, longForm ? 76 : 84);
 
-    ctx.fillStyle = "#a49d89";
-    ctx.font = "500 24px 'Noto Sans JP', sans-serif";
+    ctx.fillStyle = "#8a8272";
+    ctx.font = "500 " + (longForm ? 22 : 24) + "px 'Noto Sans JP', sans-serif";
     ctx.textAlign = "right";
     ctx.fillText("@fluture_74", W - 48, H - 40);
     ctx.textAlign = "left";
 
-    var text = preprocessCardText(d.thread ? d.thread.join("\n") : d.text, d.type);
-    var maxWidth = W - 64 - 64;
-    var top = 150, bottom = H - 90;
-    var availableHeight = bottom - top;
-
-    var fontSize = 56, lineHeight, lines;
-    while (fontSize >= 26) {
-      ctx.font = "700 " + fontSize + "px 'Noto Sans JP', sans-serif";
-      lineHeight = Math.round(fontSize * 1.5);
-      lines = wrapLinesForCanvas(ctx, text, maxWidth);
-      if (lines.length * lineHeight <= availableHeight) break;
-      fontSize -= 2;
-    }
     ctx.font = "700 " + fontSize + "px 'Noto Sans JP', sans-serif";
     var startY = top + fontSize;
+    // 視認性重視: 本文は濃いチャコールを基本とし、❌⭕やキーワードなどの要点だけ
+    // ブランドカラーで色をつける(全文をカラフルにすると逆に読みにくくなるため)。
     lines.forEach(function (line, i) {
-      if (d.type === "contrast") {
-        if (line.indexOf("❌") === 0) ctx.fillStyle = "#c4482e";
-        else if (line.indexOf("⭕") === 0) ctx.fillStyle = "#7f9a72";
-        else ctx.fillStyle = "#f4efe2";
-      } else {
-        ctx.fillStyle = "#f4efe2";
-      }
+      var color = "#1f1b13";
+      if (d.type === "contrast" && line.indexOf("❌") === 0) color = "#c4482e";
+      else if (d.type === "contrast" && line.indexOf("⭕") === 0) color = "#2f6b3f";
+      else if (/^[①②③④⑤⑥⑦⑧⑨]/.test(line)) color = "#a6631e";
+      ctx.fillStyle = color;
       ctx.fillText(line, 64, startY + i * lineHeight);
     });
     return canvas.toDataURL("image/png");
@@ -518,12 +539,15 @@
       "6. 「比較型（❌⭕）」では、❌でよくあるNG行動を2〜4個、⭕でその代わりにやるべきことを箇条書きで示す構成にする。",
       "7. 「企業紹介型」は必ず検索で確認できた実在企業の情報のみを使う。",
       "8. 各投稿は目標" + s.targetLen + "字前後を意識する。ただしXの無料アカウントは1投稿140字までしか投稿できない。140字を超えても伝えたい内容が濃い場合" + (s.allowThreads ? "（スレッド機能ON）" : "") + "は、140字以内の複数パートに分割し、返信で繋げる「スレッド」として書いてよい（2〜4パート程度が目安）。" + (s.allowThreads ? "" : "ただしスレッド機能はOFFなので、必ず140字以内の1投稿に収めること。"),
-      "9. 出力は説明文やMarkdown記法（コードブロック含む）を一切含めず、次のJSON配列のみを出力すること。前置きの説明も理由の説明も一切書かない。出力の最初の文字は必ず [ 、最後の文字は必ず ] にすること。",
+      "9. 本当に300〜400字程度の厚みのある内容が書ける場合(1回の生成で0〜1件が目安。無理に毎回作らなくてよい)は、140字に削ったりスレッドに分割したりせず、代わりに「画像化投稿」として書いてよい。画像化投稿では、①`hookText`(140字以内。続きを読みたくなる短い導入文。末尾に「続きは画像で」のように画像を見たくなる一言を入れる)と、②`fullText`(300〜400字程度の本文。そのまま画像化されるので、見出し・箇条書きなど画像で読みやすい構成にしてよい)の両方を書く。",
+      "10. 内容に合う、著作権フリーで商用利用可能な実在の画像(Unsplash・Pexels・Pixabayなど)が検索で見つかった場合のみ、直接アクセスできるURLを`imageUrl`に入れてよい(任意・全ての投稿で省略可)。見つからない/確信が持てない場合は絶対に入れない。実在しないURLを作り上げることは絶対にしない。実在の企業ロゴや商標そのものの画像は選ばない。",
+      "11. 出力は説明文やMarkdown記法（コードブロック含む）を一切含めず、次のJSON配列のみを出力すること。前置きの説明も理由の説明も一切書かない。出力の最初の文字は必ず [ 、最後の文字は必ず ] にすること。",
       "",
       "出力形式（これ以外は絶対に出力しない）:",
-      "通常投稿: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ（2〜8字程度）\",\"keyword\":\"実際に起点にした検索キーワード\",\"text\":\"投稿本文（140字以内）\"}",
-      "スレッド投稿（スレッド機能ONの場合のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"thread\":[\"1パート目(140字以内)\",\"2パート目(140字以内)\"]}",
-      "上記のどちらかの形式を1件ずつ選び、配列にして出力する: [{...}, {...}]"
+      "通常投稿: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ（2〜8字程度）\",\"keyword\":\"実際に起点にした検索キーワード\",\"text\":\"投稿本文（140字以内）\",\"imageUrl\":\"(任意)\"}",
+      "スレッド投稿（スレッド機能ONの場合のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"thread\":[\"1パート目(140字以内)\",\"2パート目(140字以内)\"],\"imageUrl\":\"(任意)\"}",
+      "画像化投稿（ルール9の条件を満たす場合のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"mode\":\"image\",\"hookText\":\"導入文(140字以内)\",\"fullText\":\"本文(300〜400字程度)\",\"imageUrl\":\"(任意)\"}",
+      "上記のいずれかの形式を1件ずつ選び、配列にして出力する: [{...}, {...}]"
     ].join("\n");
   }
 
@@ -687,7 +711,8 @@
       var card = document.createElement("div");
       card.className = "draft-card" + (d.used ? " used" : "");
 
-      var fullText = d.thread ? d.thread.join("\n続き↓\n") : d.text;
+      var isImageMode = d.mode === "image";
+      var fullText = isImageMode ? d.fullText : (d.thread ? d.thread.join("\n続き↓\n") : d.text);
       // 使用済みにした投稿は、自分自身が履歴に追加された直後の再描画で「自分自身」と
       // 比較されて100%一致してしまうため、使用済みカードでは重複チェックを行わない。
       var dup = d.used ? 0 : dupScoreAgainstHistoryAndBatch(fullText, idx);
@@ -695,11 +720,41 @@
       var top = document.createElement("div");
       top.className = "draft-top";
       var topicLabel = [d.topic, d.keyword].filter(Boolean).join(" ・ ");
+      if (isImageMode) topicLabel = "画像化投稿" + (topicLabel ? " ・ " + topicLabel : "");
       top.innerHTML = '<span class="type-tag">' + escapeHtml(TYPE_LABEL[d.type] || d.type) + '</span>' +
         '<span class="char-count">' + escapeHtml(topicLabel) + '</span>';
       card.appendChild(top);
 
-      if (d.thread && d.thread.length) {
+      if (isImageMode) {
+        var hookLen = charLen(d.hookText);
+        var hookLenLine = document.createElement("div");
+        hookLenLine.className = "char-count" + (hookLen > 140 ? " over" : "");
+        hookLenLine.textContent = "ツイート本文: " + hookLen + "字";
+        card.appendChild(hookLenLine);
+        var hookEl = document.createElement("div");
+        hookEl.className = "draft-text";
+        hookEl.textContent = d.hookText;
+        card.appendChild(hookEl);
+
+        var fullWrap = document.createElement("div");
+        fullWrap.className = "thread-part";
+        fullWrap.innerHTML = '<div class="pnum">画像に入る本文(' + charLen(d.fullText) + '字)</div>' +
+          '<div class="draft-text">' + escapeHtml(d.fullText) + '</div>';
+        card.appendChild(fullWrap);
+
+        var cardWrap = document.createElement("div");
+        cardWrap.className = "image-panel";
+        var cardImg = document.createElement("img");
+        cardImg.src = buildTextCardDataUrl(d, { longForm: true, cardText: d.fullText });
+        cardWrap.appendChild(cardImg);
+        var cardDl = document.createElement("a");
+        cardDl.className = "btn btn-x btn-small";
+        cardDl.textContent = "画像をダウンロード";
+        cardDl.href = cardImg.src;
+        cardDl.download = "furutore-card.png";
+        cardWrap.appendChild(cardDl);
+        card.appendChild(cardWrap);
+      } else if (d.thread && d.thread.length) {
         d.thread.forEach(function (part, pi) {
           var wrap = document.createElement("div");
           wrap.className = "thread-part";
@@ -729,6 +784,33 @@
         card.appendChild(textEl);
       }
 
+      if (d.imageUrl) {
+        var foundWrap = document.createElement("div");
+        foundWrap.className = "image-panel";
+        var foundLabel = document.createElement("div");
+        foundLabel.className = "pnum";
+        foundLabel.textContent = "AIが見つけた著作権フリー画像の候補(内容を確認してからお使いください)";
+        foundWrap.appendChild(foundLabel);
+        var foundImg = document.createElement("img");
+        foundImg.src = d.imageUrl;
+        foundImg.referrerPolicy = "no-referrer";
+        foundImg.addEventListener("error", function () {
+          foundWrap.innerHTML = "";
+          var errMsg = document.createElement("div");
+          errMsg.className = "dup-warn";
+          errMsg.textContent = "画像を読み込めませんでした。URLが無効か、期限切れの可能性があります: " + d.imageUrl;
+          foundWrap.appendChild(errMsg);
+        });
+        foundWrap.appendChild(foundImg);
+        var foundLink = document.createElement("a");
+        foundLink.className = "btn btn-ghost btn-small";
+        foundLink.textContent = "元画像を開く";
+        foundLink.href = d.imageUrl;
+        foundLink.target = "_blank"; foundLink.rel = "noopener noreferrer";
+        foundWrap.appendChild(foundLink);
+        card.appendChild(foundWrap);
+      }
+
       if (dup >= 0.35) {
         var warn = document.createElement("div");
         warn.className = "dup-warn";
@@ -740,23 +822,26 @@
       actions.className = "draft-actions";
 
       if (!d.thread) {
+        var tweetText = isImageMode ? d.hookText : d.text;
         var copyAllBtn = document.createElement("button");
         copyAllBtn.className = "btn btn-x btn-small";
         copyAllBtn.textContent = "コピー";
         var fbAll = document.createElement("span");
         fbAll.className = "feedback";
-        copyAllBtn.addEventListener("click", function () { copyText(d.text, fbAll); });
+        copyAllBtn.addEventListener("click", function () { copyText(tweetText, fbAll); });
         actions.appendChild(copyAllBtn);
 
         var xBtn = document.createElement("a");
         xBtn.className = "btn btn-ghost btn-small";
         xBtn.textContent = "Xで下書きを開く";
-        xBtn.href = xIntentUrl(d.text);
+        xBtn.href = xIntentUrl(tweetText);
         xBtn.target = "_blank";
         xBtn.rel = "noopener";
         actions.appendChild(xBtn);
         actions.appendChild(fbAll);
+      }
 
+      if (!d.thread && !isImageMode) {
         var imagePanel = document.createElement("div");
         imagePanel.className = "image-panel";
         imagePanel.style.display = "none";
@@ -843,7 +928,7 @@
       actions.appendChild(usedBtn);
 
       card.appendChild(actions);
-      if (!d.thread) card.appendChild(imagePanel);
+      if (!d.thread && !isImageMode) card.appendChild(imagePanel);
       grid.appendChild(card);
     });
     area.appendChild(grid);
@@ -993,12 +1078,17 @@
         var arr = extractJsonArray(raw);
         if (!Array.isArray(arr) || arr.length === 0) throw new Error("配列が空、または形式が正しくありません。");
         state.drafts = arr.map(function (item) {
+          var isImageMode = item.mode === "image";
           return {
             type: normalizeTypeKey(item.type),
             topic: item.topic || "",
             keyword: item.keyword || "",
-            text: item.thread ? undefined : (item.text || ""),
-            thread: Array.isArray(item.thread) ? item.thread : undefined,
+            mode: isImageMode ? "image" : undefined,
+            hookText: isImageMode ? (item.hookText || "") : undefined,
+            fullText: isImageMode ? (item.fullText || "") : undefined,
+            text: isImageMode || item.thread ? undefined : (item.text || ""),
+            thread: !isImageMode && Array.isArray(item.thread) ? item.thread : undefined,
+            imageUrl: item.imageUrl || "",
             used: false
           };
         });
