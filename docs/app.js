@@ -231,7 +231,7 @@
   }
 
   // 白地・カラフルなテキストカードを生成する。
-  // cardText: 画像に書く本文。longForm: 300〜400字程度の画像化投稿用に、縦長・小さめフォントで多めの文字量に対応する。
+  // cardText: 画像に書く本文。longForm: 400〜500字程度の画像化投稿用に、縦長・小さめフォントで多めの文字量に対応する。
   function buildTextCardDataUrl(d, opts) {
     opts = opts || {};
     var longForm = !!opts.longForm;
@@ -378,6 +378,23 @@
     return result;
   }
 
+  // 8件中2件を目安に「文字だけ投稿」、残りを「画像化投稿」にする(利用者の指定比率)。
+  // AI任せの「目安」だと守られないことがあったため、タイプ・キーワードと同じく
+  // コード側で件数を確定させてから指示文に明記する。
+  var TEXT_ONLY_RATIO = 2 / 8;
+  function assignFormats(count) {
+    var textOnlyCount = Math.max(1, Math.min(count, Math.round(count * TEXT_ONLY_RATIO)));
+    var imageCount = count - textOnlyCount;
+    var arr = [];
+    for (var i = 0; i < imageCount; i++) arr.push("image");
+    for (var j = 0; j < textOnlyCount; j++) arr.push("text");
+    for (var k = arr.length - 1; k > 0; k--) {
+      var r = Math.floor(Math.random() * (k + 1));
+      var tmp = arr[k]; arr[k] = arr[r]; arr[r] = tmp;
+    }
+    return arr;
+  }
+
   // ---------- keyword rotation (話題の偏り防止) ----------
   var KEYWORD_LOOKBACK = 40; // 型の割当(直近15件)より大きい窓で見る。キーワード数が多いため
 
@@ -453,12 +470,16 @@
     var count = parseInt(s.generateCount, 10) || 6;
     var assigned = assignTypes(gate.enabled, count);
     var keywords = s.useWebSearch ? assignKeywords(count) : new Array(count).fill(null);
+    var formats = assignFormats(count);
+    var imageCountInBatch = formats.filter(function (f) { return f === "image"; }).length;
+    var textOnlyCountInBatch = count - imageCountInBatch;
 
     var typeListText = assigned.map(function (key, idx) {
       var def = TYPE_DEFS.filter(function (t) { return t.key === key; })[0];
       var kw = keywords[idx];
       var kwText = kw ? "／起点キーワード: 「" + kw + "」" : "";
-      return (idx + 1) + "件目: " + def.label + "（" + def.desc + "）" + kwText;
+      var fmtText = formats[idx] === "image" ? "／形式: 画像化投稿(400〜500字)" : "／形式: 通常投稿(140字以内・必要ならスレッド)";
+      return (idx + 1) + "件目: " + def.label + "（" + def.desc + "）" + kwText + fmtText;
     }).join("\n");
 
     var recentPosts = state.history.filter(function (h) { return h.kind === "post"; }).slice(-20);
@@ -539,14 +560,14 @@
       "6. 「比較型（❌⭕）」では、❌でよくあるNG行動を2〜4個、⭕でその代わりにやるべきことを箇条書きで示す構成にする。",
       "7. 「企業紹介型」は必ず検索で確認できた実在企業の情報のみを使う。",
       "8. 各投稿は目標" + s.targetLen + "字前後を意識する。ただしXの無料アカウントは1投稿140字までしか投稿できない。140字を超えても伝えたい内容が濃い場合" + (s.allowThreads ? "（スレッド機能ON）" : "") + "は、140字以内の複数パートに分割し、返信で繋げる「スレッド」として書いてよい（2〜4パート程度が目安）。" + (s.allowThreads ? "" : "ただしスレッド機能はOFFなので、必ず140字以内の1投稿に収めること。"),
-      "9. 本当に300〜400字程度の厚みのある内容が書ける場合(1回の生成で0〜1件が目安。無理に毎回作らなくてよい)は、140字に削ったりスレッドに分割したりせず、代わりに「画像化投稿」として書いてよい。画像化投稿では、①`hookText`(140字以内。続きを読みたくなる短い導入文。末尾に「続きは画像で」のように画像を見たくなる一言を入れる)と、②`fullText`(300〜400字程度の本文。そのまま画像化されるので、見出し・箇条書きなど画像で読みやすい構成にしてよい)の両方を書く。",
+      "9. 上の「投稿タイプ」一覧で形式が「画像化投稿」と指定されている件(" + imageCountInBatch + "件/" + count + "件中)は、必ずその形式で書くこと(140字に収めたりスレッドに分割したりしない)。画像化投稿では、①`hookText`(140字以内。続きを読みたくなる短い導入文。末尾に「続きは画像で」のように画像を見たくなる一言を入れる)と、②`fullText`(400〜500字程度の本文。そのまま画像化されるので、見出し・箇条書きなど画像で読みやすい構成にしてよい)の両方を書く。形式が「通常投稿」と指定されている件(" + textOnlyCountInBatch + "件/" + count + "件中)は、従来通り140字以内(必要ならスレッド)で書く。指定された形式を自分の判断で変更しないこと。",
       "10. 内容に合う、著作権フリーで商用利用可能な実在の画像(Unsplash・Pexels・Pixabayなど)が検索で見つかった場合のみ、直接アクセスできるURLを`imageUrl`に入れてよい(任意・全ての投稿で省略可)。見つからない/確信が持てない場合は絶対に入れない。実在しないURLを作り上げることは絶対にしない。実在の企業ロゴや商標そのものの画像は選ばない。",
       "11. 出力は説明文やMarkdown記法（コードブロック含む）を一切含めず、次のJSON配列のみを出力すること。前置きの説明も理由の説明も一切書かない。出力の最初の文字は必ず [ 、最後の文字は必ず ] にすること。",
       "",
       "出力形式（これ以外は絶対に出力しない）:",
       "通常投稿: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ（2〜8字程度）\",\"keyword\":\"実際に起点にした検索キーワード\",\"text\":\"投稿本文（140字以内）\",\"imageUrl\":\"(任意)\"}",
       "スレッド投稿（スレッド機能ONの場合のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"thread\":[\"1パート目(140字以内)\",\"2パート目(140字以内)\"],\"imageUrl\":\"(任意)\"}",
-      "画像化投稿（ルール9の条件を満たす場合のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"mode\":\"image\",\"hookText\":\"導入文(140字以内)\",\"fullText\":\"本文(300〜400字程度)\",\"imageUrl\":\"(任意)\"}",
+      "画像化投稿（形式が「画像化投稿」に指定されている件のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"mode\":\"image\",\"hookText\":\"導入文(140字以内)\",\"fullText\":\"本文(400〜500字程度)\",\"imageUrl\":\"(任意)\"}",
       "上記のいずれかの形式を1件ずつ選び、配列にして出力する: [{...}, {...}]"
     ].join("\n");
   }
