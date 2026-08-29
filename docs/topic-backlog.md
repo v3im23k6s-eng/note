@@ -33,7 +33,7 @@
 | ロジックツリー | 初稿済み | articles/thinking-frameworks/logic-tree.md（note投稿はまだ） |
 | 意思決定ツリー | 未着手 | |
 | PREP法 | 初稿済み | articles/thinking-frameworks/prep-method.md（note投稿はまだ） |
-| PDCAサイクル | 未着手 | |
+| PDCAサイクル | 初稿済み | articles/thinking-frameworks/pdca-cycle.md（note投稿はまだ） |
 | フェルミ推定 | 初稿済み | articles/thinking-frameworks/fermi-estimation.md（note投稿はまだ） |
 | 抽象化と具体化 | 未着手 | 自己分析にも接続可 |
 | ボトルネック／ドライバー／トレードオフ | 未着手 | ケース面接にも接続可 |
@@ -45,7 +45,7 @@
 | テーマ | ステータス | 備考 |
 |--------|-----------|------|
 | デザイン思考テスト | 初稿済み | サンプル記事作成済み（専門分野） |
-| ウェブテスト対策全般（SPI含む） | 未着手 | |
+| ウェブテスト対策全般（SPI含む） | 初稿済み | articles/tests/web-test.md（note投稿はまだ） |
 
 ## articles/interviews（面接対策）
 
@@ -60,7 +60,7 @@
 
 | テーマ | ステータス | 備考 |
 |--------|-----------|------|
-| 自己分析の進め方 | 未着手 | |
+| 自己分析の進め方 | 初稿済み | articles/self-analysis/self-analysis-basics.md（note投稿はまだ） |
 | ガクチカ（学生時代に力を入れたこと）の作り方 | 初稿済み | articles/self-analysis/gakuchika.md（note投稿はまだ） |
 | Will-Can-Mustの整理 | 初稿済み | articles/self-analysis/will-can-must.md（note投稿はまだ） |
 | キャリアアンカー | 初稿済み | articles/self-analysis/career-anchor.md（note投稿はまだ） |
