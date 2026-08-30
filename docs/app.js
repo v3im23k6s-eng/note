@@ -87,7 +87,6 @@
       searchKeywords: DEFAULT_SEARCH_KEYWORDS,
       types: types,
       targetLen: 130,
-      allowThreads: true,
       generateCount: 6,
       qtCount: 2
     };
@@ -199,6 +198,27 @@
     var u = "https://x.com/intent/tweet?text=" + encodeURIComponent(text);
     if (url) u += "&url=" + encodeURIComponent(url);
     return u;
+  }
+
+  // スマホの「共有」機能(Web Share API)経由で、画像とテキストをまとめてXに渡す。
+  // 対応端末ではダウンロード→カメラロール→貼り付け、という手間なしに
+  // 共有シートからXを選ぶだけで、画像添付済みの投稿画面を開ける。
+  // 非対応の場合はfalseを返し、呼び出し側でダウンロードにフォールバックする。
+  function canShareFiles() {
+    return !!(navigator.share && navigator.canShare);
+  }
+  function shareImageToX(dataUrl, text, filename, feedbackEl) {
+    return fetch(dataUrl)
+      .then(function (res) { return res.blob(); })
+      .then(function (blob) {
+        var file = new File([blob], filename, { type: "image/png" });
+        if (!navigator.canShare({ files: [file] })) return false;
+        return navigator.share({ files: [file], text: text }).then(function () { return true; });
+      })
+      .catch(function (e) {
+        if (e && e.name === "AbortError") return true; // 利用者が共有をキャンセルしただけ
+        return false;
+      });
   }
 
   // ---------- 画像カード生成(canvas・APIやログイン不要) ----------
@@ -559,17 +579,16 @@
       "5. 「アフィリエイト紹介型」を作る場合は、登録済みの商品のみを扱い、誇大な効果効能は書かない。広告であることが一目でわかるよう文中に「#PR」の表記を必ず入れる。",
       "6. 「比較型（❌⭕）」では、❌でよくあるNG行動を2〜4個、⭕でその代わりにやるべきことを箇条書きで示す構成にする。",
       "7. 「企業紹介型」は必ず検索で確認できた実在企業の情報のみを使う。",
-      "8. 各投稿は目標" + s.targetLen + "字前後を意識する。ただしXの無料アカウントは1投稿140字までしか投稿できない。140字を超えても伝えたい内容が濃い場合" + (s.allowThreads ? "（スレッド機能ON）" : "") + "は、140字以内の複数パートに分割し、返信で繋げる「スレッド」として書いてよい（2〜4パート程度が目安）。" + (s.allowThreads ? "" : "ただしスレッド機能はOFFなので、必ず140字以内の1投稿に収めること。"),
+      "8. 形式が「通常投稿」の件は、必ず140字以内(目標" + s.targetLen + "字前後)の1投稿として完結させること。スレッドへの分割はしない。ボリュームのある内容を書きたくなった場合は、その内容は無理に140字へ削ったり複数パートに分けたりせず、画像化投稿の方に回すこと(通常投稿の枠では扱わない)。",
       "9. 上の「投稿タイプ」一覧で形式が「画像化投稿」と指定されている件(" + imageCountInBatch + "件/" + count + "件中)は、必ずその形式で書くこと(140字に収めたりスレッドに分割したりしない)。画像化投稿では、①`hookText`(140字以内の導入文)と、②`fullText`(400〜500字程度の本文。そのまま画像化されるので、見出し・箇条書きなど画像で読みやすい構成にしてよい)の両方を書く。形式が「通常投稿」と指定されている件(" + textOnlyCountInBatch + "件/" + count + "件中)は、従来通り140字以内(必要ならスレッド)で書く。指定された形式を自分の判断で変更しないこと。",
       "9-1. `hookText`の質が画像化投稿の生命線。画像は開かれて初めて読まれるため、「続きは画像で」と付け加えるだけの弱いフックにしない。次の型を意識して、開かずにいられない一文にする: (a)具体的な数字・件数を見せる(例:「◯回受けて分かった」「たった◯つの手順」)、(b)結論やノウハウの中身は伏せて『何が得られるか』だけを見せる情報のギャップを作る(例:「みんな知らずに損してる」「9割が見落としてる」)、(c)自分の実体験・実績に紐づける(捏造禁止、ペルソナに書かれている実績の範囲で)。「続きは画像で」のような定型句をそのまま使うのではなく、その回ごとに内容に即した自然な誘導文にする。ただし誇張・煽り(誰でも/絶対に稼げる系、NG表現リスト参照)は禁止で、あくまで内容の価値が正しく伝わる範囲でフックを作ること。",
       "10. 内容に合う、著作権フリーで商用利用可能な実在の画像(Unsplash・Pexels・Pixabayなど)が検索で見つかった場合のみ、直接アクセスできるURLを`imageUrl`に入れてよい(任意・全ての投稿で省略可)。見つからない/確信が持てない場合は絶対に入れない。実在しないURLを作り上げることは絶対にしない。実在の企業ロゴや商標そのものの画像は選ばない。",
       "11. 出力は説明文やMarkdown記法（コードブロック含む）を一切含めず、次のJSON配列のみを出力すること。前置きの説明も理由の説明も一切書かない。出力の最初の文字は必ず [ 、最後の文字は必ず ] にすること。",
       "",
       "出力形式（これ以外は絶対に出力しない）:",
-      "通常投稿: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ（2〜8字程度）\",\"keyword\":\"実際に起点にした検索キーワード\",\"text\":\"投稿本文（140字以内）\",\"imageUrl\":\"(任意)\"}",
-      "スレッド投稿（スレッド機能ONの場合のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"thread\":[\"1パート目(140字以内)\",\"2パート目(140字以内)\"],\"imageUrl\":\"(任意)\"}",
-      "画像化投稿（形式が「画像化投稿」に指定されている件のみ）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"mode\":\"image\",\"hookText\":\"導入文(140字以内)\",\"fullText\":\"本文(400〜500字程度)\",\"imageUrl\":\"(任意)\"}",
-      "上記のいずれかの形式を1件ずつ選び、配列にして出力する: [{...}, {...}]"
+      "通常投稿（形式が「通常投稿」に指定されている件）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ（2〜8字程度）\",\"keyword\":\"実際に起点にした検索キーワード\",\"text\":\"投稿本文（必ず140字以内）\",\"imageUrl\":\"(任意)\"}",
+      "画像化投稿（形式が「画像化投稿」に指定されている件）: {\"type\":\"投稿タイプ名\",\"topic\":\"話題タグ\",\"keyword\":\"実際に起点にした検索キーワード\",\"mode\":\"image\",\"hookText\":\"導入文(140字以内)\",\"fullText\":\"本文(400〜500字程度)\",\"imageUrl\":\"(任意)\"}",
+      "指定された形式の通りに1件ずつ書き、配列にして出力する: [{...}, {...}]"
     ].join("\n");
   }
 
@@ -619,7 +638,6 @@
       if (el) el.checked = !!s.types[t.key];
     });
     $("#targetLen").value = s.targetLen;
-    $("#allowThreads").checked = !!s.allowThreads;
     $("#generateCount").value = String(s.generateCount);
     $("#qtCountSelect").value = String(s.qtCount);
   }
@@ -642,7 +660,6 @@
     var len = clamp(parseInt(lenRaw, 10) || 130, 40, 400);
     s.targetLen = len;
     $("#targetLen").value = len;
-    s.allowThreads = $("#allowThreads").checked;
     s.generateCount = parseInt($("#generateCount").value, 10) || 6;
     s.qtCount = parseInt($("#qtCountSelect").value, 10) || 2;
   }
@@ -769,12 +786,29 @@
         var cardImg = document.createElement("img");
         cardImg.src = buildTextCardDataUrl(d, { longForm: true, cardText: d.fullText });
         cardWrap.appendChild(cardImg);
+        var cardBtnRow = document.createElement("div");
+        cardBtnRow.className = "row";
+        var cardFb = document.createElement("span");
+        cardFb.className = "feedback";
+        if (canShareFiles()) {
+          var cardShareBtn = document.createElement("button");
+          cardShareBtn.className = "btn btn-x btn-small";
+          cardShareBtn.textContent = "画像を共有してXへ";
+          cardShareBtn.addEventListener("click", function () {
+            shareImageToX(cardImg.src, d.hookText, "furutore-card.png", cardFb).then(function (ok) {
+              if (!ok) showFeedback(cardFb, "共有できませんでした。下のダウンロードから保存して貼り付けてください", true);
+            });
+          });
+          cardBtnRow.appendChild(cardShareBtn);
+        }
         var cardDl = document.createElement("a");
-        cardDl.className = "btn btn-x btn-small";
+        cardDl.className = "btn btn-ghost btn-small";
         cardDl.textContent = "画像をダウンロード";
         cardDl.href = cardImg.src;
         cardDl.download = "furutore-card.png";
-        cardWrap.appendChild(cardDl);
+        cardBtnRow.appendChild(cardDl);
+        cardBtnRow.appendChild(cardFb);
+        cardWrap.appendChild(cardBtnRow);
         card.appendChild(cardWrap);
       } else if (d.thread && d.thread.length) {
         d.thread.forEach(function (part, pi) {
@@ -877,12 +911,29 @@
           var img = document.createElement("img");
           img.src = dataUrl;
           imagePanel.appendChild(img);
+          var btnRow = document.createElement("div");
+          btnRow.className = "row";
+          var fb = document.createElement("span");
+          fb.className = "feedback";
+          if (canShareFiles()) {
+            var shareBtn = document.createElement("button");
+            shareBtn.className = "btn btn-x btn-small";
+            shareBtn.textContent = "画像を共有してXへ";
+            shareBtn.addEventListener("click", function () {
+              shareImageToX(dataUrl, tweetText, "furutore-card.png", fb).then(function (ok) {
+                if (!ok) showFeedback(fb, "共有できませんでした。下のダウンロードから保存して貼り付けてください", true);
+              });
+            });
+            btnRow.appendChild(shareBtn);
+          }
           var dl = document.createElement("a");
-          dl.className = "btn btn-x btn-small";
+          dl.className = "btn btn-ghost btn-small";
           dl.textContent = "画像をダウンロード";
           dl.href = dataUrl;
           dl.download = "furutore-card.png";
-          imagePanel.appendChild(dl);
+          btnRow.appendChild(dl);
+          btnRow.appendChild(fb);
+          imagePanel.appendChild(btnRow);
           imagePanel.style.display = "block";
         });
         actions.appendChild(cardImgBtn);
